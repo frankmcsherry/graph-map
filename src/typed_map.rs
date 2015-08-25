@@ -15,7 +15,6 @@ pub struct TypedMemoryMap<T:Copy> {
 
 impl<T:Copy> TypedMemoryMap<T> {
     pub fn new(filename: String) -> TypedMemoryMap<T> {
-        println!("attempting to open {}", filename);
         let file = File::open(filename).ok().expect("error opening file");
         let size = file.metadata().ok().expect("error reading metadata").len() as usize;
         TypedMemoryMap {
