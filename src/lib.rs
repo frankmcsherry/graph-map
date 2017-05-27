@@ -1,4 +1,4 @@
-extern crate mmap;
+extern crate memmap;
 
 pub use graph_map::GraphMMap;
 
