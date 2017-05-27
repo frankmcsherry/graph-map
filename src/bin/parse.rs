@@ -21,9 +21,9 @@ fn read_edges(filename: &str) -> Vec<(u32, u32)> {
     for readline in file.lines() {
         let line = readline.ok().expect("read error");
         if !line.starts_with('#') {
-            let elts: Vec<&str> = line[..].split_whitespace().collect();
-            let src: u32 = elts[0].parse().ok().expect("malformed src");
-            let dst: u32 = elts[1].parse().ok().expect("malformed dst");
+            let mut elts = line[..].split_whitespace();
+            let src: u32 = elts.next().unwrap().parse().ok().expect("malformed src");
+            let dst: u32 = elts.next().unwrap().parse().ok().expect("malformed dst");
             graph.push((src, dst))
         }
     }
@@ -60,7 +60,6 @@ fn digest_graph_vector(graph: &(Vec<u64>, Vec<u32>), output_prefix: &str) {
     while slice.len() > 0 {
         let to_write = if slice.len() < 1000000 { slice.len() } else { 1000000 };
         edge_writer.write_all(&slice[..to_write]).unwrap();
-        println!("wrote some; remaining: {}", slice.len());
         slice = &slice[to_write..];
     }
 }
