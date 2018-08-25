@@ -2,7 +2,7 @@ extern crate graph_map;
 use graph_map::GraphMMap;
 
 fn main() {
-    println!("usage: print <source>");
+    // println!("usage: print <source>");
 
     let filename = std::env::args().skip(1).next().unwrap();
     let graph = GraphMMap::new(&filename);

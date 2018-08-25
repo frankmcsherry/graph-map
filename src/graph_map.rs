@@ -6,7 +6,9 @@ pub struct GraphMMap {
 }
 
 impl GraphMMap {
+    #[inline(always)]
     pub fn nodes(&self) -> usize { self.nodes[..].len() }
+    #[inline(always)]
     pub fn edges(&self, node: usize) -> &[u32] {
         let nodes = &self.nodes[..];
         if node + 1 < nodes.len() {
