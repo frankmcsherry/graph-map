@@ -18,7 +18,7 @@ fn main() {
     let target = std::env::args().nth(2).unwrap();
 
     let mut graph = read_edges(&source);
-    for instruction in std::env::args().skip(2) {
+    for instruction in std::env::args().skip(3) {
         match instruction.as_str() {
             "sort" => graph.sort(),                 // sorts the edges by (src, dst).
             "dedup" => graph.dedup(),               // deduplicates edges.
