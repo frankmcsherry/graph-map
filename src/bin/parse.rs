@@ -10,15 +10,21 @@ use std::cmp::{min, max};
 use rand::Rng;
 
 fn main() {
-    println!("usage: parse <source> <target> [sort|dedup|reorder|undirect|randomize]^*");
+    println!("usage: parse <source> <target> [strings] [sort|dedup|reorder|undirect|randomize|symmetrize]^*");
     println!("takes sorted input whose lines look like:");
     println!("<src> <dst>");
     println!("will overwrite <target>.offsets and <target>.targets");
     let source = std::env::args().nth(1).unwrap();
     let target = std::env::args().nth(2).unwrap();
 
-    let mut graph = read_edges(&source);
-    for instruction in std::env::args().skip(2) {
+    let (mut graph, skip) = if std::env::args().nth(3) == Some("strings".to_owned()) {
+        (read_strings(&source), 4)
+    }
+    else {
+        (read_edges(&source), 3)
+    };
+
+    for instruction in std::env::args().skip(skip) {
         match instruction.as_str() {
             "sort" => graph.sort(),                 // sorts the edges by (src, dst).
             "dedup" => graph.dedup(),               // deduplicates edges.
@@ -26,6 +32,7 @@ fn main() {
             "reorder" => reorder(&mut graph),       // renumbers nodes by undirected degree.
             "undirect" => undirect(&mut graph),     // removes edge direction.
             "randomize" => randomize(&mut graph),   // renumbers nodes randomly.
+            "symmetrize" => symmetrize(&mut graph),
             unknown => {
                 panic!(format!("Unrecognized command: {}", unknown));
             },
@@ -35,6 +42,14 @@ fn main() {
     graph.sort();
     graph.dedup();
     digest_graph_vector(&_extract_fragment(graph.iter().map(|x| *x)), &target);
+}
+
+fn symmetrize(graph: &mut Vec<(u32, u32)>) {
+    let count = graph.len();
+    for index in 0 .. count {
+        let (x,y) = graph[index];
+        graph.push((y,x));
+    }
 }
 
 /// Reads lines of text into pairs of integers.
@@ -50,6 +65,27 @@ fn read_edges(filename: &str) -> Vec<(u32, u32)> {
             graph.push((src, dst));
         }
     }
+    println!("read {} lines", graph.len());
+    graph
+}
+
+/// Reads lines of text into pairs of integers.
+fn read_strings(filename: &str) -> Vec<(u32, u32)> {
+    let mut graph = Vec::new();
+    let mut intern = ::std::collections::HashMap::new();
+    let file = BufReader::new(File::open(filename).unwrap());
+    for readline in file.lines() {
+        let line = readline.ok().expect("read error");
+        if !line.starts_with('#') {
+            let mut elts = line[..].split_whitespace();
+            let src = elts.next().expect("line missing src field");
+            if !intern.contains_key(src) { let len = intern.len() as u32; intern.insert(src.to_owned(), len); }
+            let dst = elts.next().expect("line missing dst field");
+            if !intern.contains_key(dst) { let len = intern.len() as u32; intern.insert(dst.to_owned(), len); }
+            graph.push((intern[src], intern[dst]));
+        }
+    }
+    println!("read {} lines", graph.len());
     graph
 }
 
