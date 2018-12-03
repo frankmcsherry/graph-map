@@ -14,5 +14,5 @@ keywords = ["graph"]
 license = "MIT"
 
 [dependencies]
-rand="*"
+rand="0.4"
 memmap="0.5.2"
