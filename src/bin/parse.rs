@@ -26,13 +26,13 @@ fn main() {
 
     for instruction in std::env::args().skip(skip) {
         match instruction.as_str() {
-            "sort" => graph.sort(),                 // sorts the edges by (src, dst).
-            "dedup" => graph.dedup(),               // deduplicates edges.
+            "sort" => graph.sort(),                     // sorts the edges by (src, dst).
+            "dedup" => graph.dedup(),                   // deduplicates edges.
             "deloop" => graph.retain(|&(x,y)| x != y),  // removes self-loops.
-            "reorder" => reorder(&mut graph),       // renumbers nodes by undirected degree.
-            "undirect" => undirect(&mut graph),     // removes edge direction.
-            "randomize" => randomize(&mut graph),   // renumbers nodes randomly.
-            "symmetrize" => symmetrize(&mut graph),
+            "reorder" => reorder(&mut graph),           // renumbers nodes by undirected degree.
+            "undirect" => undirect(&mut graph),         // directs edges from small to large.
+            "randomize" => randomize(&mut graph),       // renumbers nodes randomly.
+            "symmetrize" => symmetrize(&mut graph),     // adds reverse edges.
             unknown => {
                 panic!(format!("Unrecognized command: {}", unknown));
             },
