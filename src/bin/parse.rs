@@ -10,25 +10,40 @@ use std::cmp::{min, max};
 use rand::Rng;
 
 fn main() {
-    println!("usage: parse <source> <target> [strings] [sort|dedup|reorder|undirect|randomize|symmetrize]^*");
+    println!("usage: parse <source> <target> [separator <char>] [strings] [sort|dedup|deloop|reorder|undirect|randomize|symmetrize]^*");
     println!("takes sorted input whose lines look like:");
     println!("<src> <dst>");
     println!("will overwrite <target>.offsets and <target>.targets");
     let source = std::env::args().nth(1).unwrap();
     let target = std::env::args().nth(2).unwrap();
 
-    let (mut graph, skip) = if std::env::args().nth(3) == Some("strings".to_owned()) {
-        (read_strings(&source), 4)
-    }
-    else {
-        (read_edges(&source), 3)
+    let (separator, nth) = if std::env::args().nth(3) == Some("separator".to_owned()) {
+        (std::env::args().nth(4).map(|strn| strn.chars().next().unwrap()), 5)
+    } else {
+        (None, 3)
+    };
+
+    println!("Processing input file");
+    let (mut graph, skip) = if std::env::args().nth(nth) == Some("strings".to_owned()) {
+        (read_strings(&source, separator), nth + 1)
+    } else {
+        (read_edges(&source, separator), nth)
     };
 
     for instruction in std::env::args().skip(skip) {
         match instruction.as_str() {
-            "sort" => graph.sort(),                     // sorts the edges by (src, dst).
-            "dedup" => graph.dedup(),                   // deduplicates edges.
-            "deloop" => graph.retain(|&(x,y)| x != y),  // removes self-loops.
+            "sort" => { graph.sort_unstable(); }        // sorts the edges by (src, dst).
+            "dedup" => {                                // deduplicates edges.
+                let len = graph.len();
+                graph.dedup();
+                println!("Removed {} duplicate edges", len - graph.len());
+            }
+            "deloop" => {                               // removes self-loops.
+                let len = graph.len();
+                graph.retain(|&(x, y)| x != y);
+                let count = len - graph.len();
+                println!("Removed {} loops", count);
+            }
             "reorder" => reorder(&mut graph),           // renumbers nodes by undirected degree.
             "undirect" => undirect(&mut graph),         // directs edges from small to large.
             "randomize" => randomize(&mut graph),       // renumbers nodes randomly.
@@ -39,9 +54,11 @@ fn main() {
         }
     }
 
-    graph.sort();
-    graph.dedup();
-    digest_graph_vector(&_extract_fragment(graph.iter().map(|x| *x)), &target);
+    println!("Preparing output");
+    graph.sort_unstable();
+    let output = &_extract_fragment(graph.into_iter());
+    println!("Writing {} vertices and {} edges", output.0.len() - 1, output.1.len());
+    digest_graph_vector(output, &target);
 }
 
 fn symmetrize(graph: &mut Vec<(u32, u32)>) {
@@ -53,39 +70,43 @@ fn symmetrize(graph: &mut Vec<(u32, u32)>) {
 }
 
 /// Reads lines of text into pairs of integers.
-fn read_edges(filename: &str) -> Vec<(u32, u32)> {
+fn read_edges(filename: &str, separator: Option<char>) -> Vec<(u32, u32)> {
     let mut graph = Vec::new();
     let file = BufReader::new(File::open(filename).unwrap());
-    for readline in file.lines() {
-        let line = readline.ok().expect("read error");
-        if !line.starts_with('#') {
-            let mut elts = line[..].split_whitespace();
-            let src: u32 = elts.next().expect("line missing src field").parse().expect("malformed src");
-            let dst: u32 = elts.next().expect("line missing dst field").parse().expect("malformed dst");
+    for line in file.lines().filter_map(Result::ok) {
+        if !['#', '%']
+            .iter()
+            .any(|&comment_char| line.starts_with(comment_char))
+        {
+            let elts = if let Some(sep) = separator { line[..].split(sep).collect::<Vec<_>>() } else { line[..].split_whitespace().collect::<Vec<_>>() };
+            let src: u32 = elts.get(0).expect("line missing src field").parse().expect("malformed src");
+            let dst: u32 = elts.get(1).expect("line missing dst field").parse().expect("malformed dst");
             graph.push((src, dst));
         }
     }
-    println!("read {} lines", graph.len());
+    println!("Read {} lines", graph.len());
     graph
 }
 
 /// Reads lines of text into pairs of integers.
-fn read_strings(filename: &str) -> Vec<(u32, u32)> {
+fn read_strings(filename: &str, separator: Option<char>) -> Vec<(u32, u32)> {
     let mut graph = Vec::new();
     let mut intern = ::std::collections::HashMap::new();
     let file = BufReader::new(File::open(filename).unwrap());
-    for readline in file.lines() {
-        let line = readline.ok().expect("read error");
-        if !line.starts_with('#') {
-            let mut elts = line[..].split_whitespace();
-            let src = elts.next().expect("line missing src field");
-            if !intern.contains_key(src) { let len = intern.len() as u32; intern.insert(src.to_owned(), len); }
-            let dst = elts.next().expect("line missing dst field");
-            if !intern.contains_key(dst) { let len = intern.len() as u32; intern.insert(dst.to_owned(), len); }
+    for line in file.lines().filter_map(Result::ok) {
+        if !['#', '%']
+            .iter()
+            .any(|&comment_char| line.starts_with(comment_char))
+        {
+            let elts = if let Some(sep) = separator { line[..].split(sep).collect::<Vec<_>>() } else { line[..].split_whitespace().collect::<Vec<_>>() };
+            let src = *elts.get(0).expect("line missing src field");
+            if !intern.contains_key(src) { let len = intern.len() as u32; intern.insert(src.to_string(), len); }
+            let dst = *elts.get(1).expect("line missing dst field");
+            if !intern.contains_key(dst) { let len = intern.len() as u32; intern.insert(dst.to_string(), len); }
             graph.push((intern[src], intern[dst]));
         }
     }
-    println!("read {} lines", graph.len());
+    println!("Read {} lines", graph.len());
     graph
 }
 
