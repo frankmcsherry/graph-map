@@ -18,7 +18,7 @@ impl<T:Copy> TypedMemoryMap<T> {
         let size = file.metadata().ok().expect("error reading metadata").len() as usize;
 
         TypedMemoryMap {
-            map: memmap::Mmap::open(&file, memmap::Protection::Read).unwrap(),
+            map: unsafe { memmap::Mmap::map(&file).unwrap() },
             len: size / mem::size_of::<T>(),
             phn: PhantomData,
         }
@@ -29,6 +29,6 @@ impl<T:Copy> ops::Index<ops::RangeFull> for TypedMemoryMap<T> {
     type Output = [T];
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &[T] {
-        unsafe { slice::from_raw_parts(self.map.ptr() as *const T, self.len) }
+        unsafe { slice::from_raw_parts(self.map.as_ptr() as *const T, self.len) }
     }
 }
